@@ -5,7 +5,7 @@ globals [
 breed [ cells cell ]
 
 cells-own [
-  hex-neighbors  ;; agentset of 5 neighboring cells
+  hex-neighbors  ;; agentset of 6 neighboring cells
   n              ;; used to store a count of red neighbors
   m              ;; used to store a count of green neighbors
   persuasiveness ;; used to store the persuasiveness of the agent (ability to change others' opinion)
