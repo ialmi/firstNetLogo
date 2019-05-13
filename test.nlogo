@@ -1,13 +1,17 @@
 globals [
   perc-red ;; used to store the percentage of red agents
+
 ]
 
 breed [ cells cell ]
 
 cells-own [
   hex-neighbors  ;; agentset of 6 neighboring cells
+  two-neighbors  ;; agentset of neighbors with radius 2
+  all-neighbors  ;; agentset of neighbors
   n              ;; used to store a count of red neighbors
   m              ;; used to store a count of green neighbors
+  comfortable    ;;
   persuasiveness ;; used to store the persuasiveness of the agent (ability to change others' opinion)
   suportiveness  ;; used to store the suportiveness of the agent (ability to help others maintain their opinion)
 ]
@@ -32,7 +36,7 @@ end
 
 to setup-grid
   clear-all
-  ;set-default-shape cells "box"
+  set-default-shape cells "box"
   ask patches
     [if random 100 < density
       [ sprout-cells 1
@@ -43,20 +47,30 @@ to setup-grid
   ;; now set up the hex-neighbors agentsets
   ask cells
     [ ifelse pxcor mod 2 = 0
-        [ set hex-neighbors cells-on patches at-points [[0 1] [1 0] [1 -1] [0 -1] [-1 -1] [-1 0]] ]
-        [ set hex-neighbors cells-on patches at-points [[0 1] [1 1] [1  0] [0 -1] [-1  0] [-1 1]] ] ]
+        [ set hex-neighbors cells-on patches at-points [[0 1] [1 0] [1 -1] [0 -1] [-1 -1] [-1 0]]
+          set two-neighbors cells-on patches at-points [[0 1] [1 0] [1 -1] [0 -1] [-1 -1] [-1 0]
+          [0 2] [1 1] [2 1] [2 0] [2 -1] [1 -2] [0 -2] [-1 -2] [-2 -1] [-2 0] [-2 1] [-1 1]]
+      ]
+        [ set hex-neighbors cells-on patches at-points [[0 1] [1 1] [1  0] [0 -1] [-1  0] [-1 1]]
+          set two-neighbors cells-on patches at-points [[0 1] [1 1] [1  0] [0 -1] [-1  0] [-1 1]
+          [0 2] [1 2] [2 1] [2 0] [2 -1] [1 -1] [0 -2] [-1 -1] [-2 -1] [-2 0] [-2 1] [-1 2]]
+        ]
+  ]
 end
 
 to go
 
   ask cells
-    [ set n count hex-neighbors with [color = red] ]
+    [ifelse radius-2?
+      [set all-neighbors two-neighbors]
+      [set all-neighbors hex-neighbors]
+    set n count all-neighbors with [color = red] ]
   ask cells
     [ if n > Number-sources
         [ set color red ] ]
 
    ask cells
-    [ set m count hex-neighbors with [color = green] ]
+    [ set m count all-neighbors with [color = green] ]
   ask cells
     [ if m > Number-sources
         [ set color green ] ]
@@ -184,7 +198,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -2674135 true "" "plot prc-red"
+"default" 1.0 0 -2674135 true "" "plot perc-red"
 
 SLIDER
 29
@@ -195,7 +209,7 @@ density
 density
 0
 100
-75.0
+83.0
 1
 1
 NIL
@@ -209,7 +223,7 @@ SLIDER
 number-sources
 number-sources
 0
-10
+15
 2.0
 1
 1
@@ -221,8 +235,8 @@ SWITCH
 133
 356
 166
-radius-2
-radius-2
+radius-2?
+radius-2?
 1
 1
 -1000
