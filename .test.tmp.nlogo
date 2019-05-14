@@ -11,15 +11,20 @@ cells-own [
   all-neighbors  ;; agentset of neighbors
   n              ;; used to store a count of red neighbors
   m              ;; used to store a count of green neighbors
-
+  different      ;;
+  same           ;;
+  comfortable    ;;
   persuasiveness ;; used to store the persuasiveness of the agent (ability to change others' opinion)
-  suportiveness  ;; used to store the suportiveness of the agent (ability to help others maintain their opinion)
+  supportiveness  ;; used to store the suportiveness of the agent (ability to help others maintain their opinion)
+  persuasiveness-impact
+  supportiveness-impact
+  pers
+  sup
 ]
+
 to setup
   clear-all
   setup-grid
-
-
 
   ask patches
     [ ask cells-here
@@ -43,7 +48,9 @@ to setup-grid
         [ set color gray - 3  ;; dark gray
           ;; shift even columns down
           if pxcor mod 2 = 0
-              [ set ycor ycor - 0.5 ] ] ]]
+              [ set ycor ycor - 0.5 ]
+          set persuasiveness random 100
+          set supportiveness random 100] ]]
   ;; now set up the hex-neighbors agentsets
   ask cells
     [ ifelse pxcor mod 2 = 0
@@ -77,8 +84,36 @@ to go
 
   update-globals
 
+  compute-for-agents
+
   tick
 end
+
+to compute-for-agents
+  ask cell 1
+    [ let others cells with [ color != [ color ] of myself ]
+      let own cells with [color = [color] of myself]
+
+      let mainx xcor
+      let mainy ycor
+
+      ask others
+        [set pers [persuasiveness] of myself / distancexy mainx mainy]
+      ifelse count(others) > 0
+         [set persuasiveness-impact sqrt(count others ) * sum([pers] of others) / count(others)
+            print persuasiveness-impact]
+         [stop]
+
+
+      ask own
+        [iset sup [supportiveness] of myself / distancexy mainx mainy]
+      ifelse count(own) > 0
+        [set supportiveness-impact sqrt(count own ) * sum([sup] of own) / count(own)
+           print supportiveness-impact]
+        [stop]
+  ]
+end
+
 
 
 to update-globals
@@ -176,7 +211,7 @@ percentage-red
 percentage-red
 1
 100
-39.0
+36.0
 1
 1
 NIL
@@ -209,7 +244,7 @@ density
 density
 0
 100
-83.0
+100.0
 1
 1
 NIL
@@ -224,7 +259,7 @@ number-sources
 number-sources
 0
 15
-10.0
+3.0
 1
 1
 NIL
