@@ -6,14 +6,12 @@ globals [
 breed [ cells cell ]
 
 cells-own [
-  hex-neighbors  ;; agentset of 6 neighboring cells
+  one-neighbors  ;; agentset of directly neighboring cells
   two-neighbors  ;; agentset of neighbors with radius 2
   all-neighbors  ;; agentset of neighbors
   n              ;; used to store a count of red neighbors
   m              ;; used to store a count of green neighbors
-  different      ;;
-  same           ;;
-  comfortable    ;;
+  ;comfortable    ;;
   persuasiveness ;; used to store the persuasiveness of the agent (ability to change others' opinion)
   supportiveness  ;; used to store the suportiveness of the agent (ability to help others maintain their opinion)
   persuasiveness-impact
@@ -41,6 +39,13 @@ end
 
 to setup-grid
   clear-all
+  ifelse hexagonal?
+    [setup-hex]
+    [setup-square]
+  reset-ticks
+end
+
+to setup-hex
   set-default-shape cells "box"
   ask patches
     [if random 100 < density
@@ -51,46 +56,85 @@ to setup-grid
               [ set ycor ycor - 0.5 ]
           set persuasiveness random 100
           set supportiveness random 100] ]]
-  ;; now set up the hex-neighbors agentsets
+  ;; now set up the 1-neighbors agentsets
   ask cells
     [ ifelse pxcor mod 2 = 0
-        [ set hex-neighbors cells-on patches at-points [[0 1] [1 0] [1 -1] [0 -1] [-1 -1] [-1 0]]
+        [ set one-neighbors cells-on patches at-points [[0 1] [1 0] [1 -1] [0 -1] [-1 -1] [-1 0]]
           set two-neighbors cells-on patches at-points [[0 1] [1 0] [1 -1] [0 -1] [-1 -1] [-1 0]
           [0 2] [1 1] [2 1] [2 0] [2 -1] [1 -2] [0 -2] [-1 -2] [-2 -1] [-2 0] [-2 1] [-1 1]]
-      ]
-        [ set hex-neighbors cells-on patches at-points [[0 1] [1 1] [1  0] [0 -1] [-1  0] [-1 1]]
+        ]
+        [ set one-neighbors cells-on patches at-points [[0 1] [1 1] [1  0] [0 -1] [-1  0] [-1 1]]
           set two-neighbors cells-on patches at-points [[0 1] [1 1] [1  0] [0 -1] [-1  0] [-1 1]
           [0 2] [1 2] [2 1] [2 0] [2 -1] [1 -1] [0 -2] [-1 -1] [-2 -1] [-2 0] [-2 1] [-1 2]]
         ]
-  ]
+     ]
 end
+
+to setup-square
+  set-default-shape cells "square"
+  ask patches
+    [if random 100 < density
+      [ sprout-cells 1
+        [ set color gray - 3  ;; dark gray
+          set persuasiveness random 100
+          set supportiveness random 100] ]]
+  ;; now set up the 1-neighbors agentsets
+  ask cells
+        [ set one-neighbors cells-on patches at-points [[0 1] [1 1] [1 0] [1 -1] [0 -1] [-1 -1] [-1 0] [-1 1]]
+          set two-neighbors cells-on patches at-points [[0 1] [1 1] [1 0] [1 -1] [0 -1] [-1 -1] [-1 0] [-1 1]
+            [0 2] [1 2] [2 2][2 1] [2 0] [2 -1] [2 -2] [1 -2] [0 -2] [-1 -2] [-2 -2] [-2 -1] [-2 0] [-2 1] [-2 2] [-1 2]]
+        ]
+
+end
+
 
 to go
 
-  ask cells
-    [ifelse radius-2?
-      [set all-neighbors two-neighbors]
-      [set all-neighbors hex-neighbors]
-    set n count all-neighbors with [color = red] ]
-  ask cells
-    [ if n > Number-sources
-        [ set color red ] ]
-
-   ask cells
-    [ set m count all-neighbors with [color = green] ]
-  ask cells
-    [ if m > Number-sources
-        [ set color green ] ]
+ifelse simple?
+  [simple]
+  [nowak-latane]
 
   update-globals
-
-  compute-for-agents
 
   tick
 end
 
+
+to nowak-latane
+  compute-for-agents
+  ask cells
+    [ifelse  color = green
+      [if persuasiveness-impact > supportiveness-impact
+        [ set color red
+          set persuasiveness random 100
+          set supportiveness random 100 ] ]
+      [if persuasiveness-impact > supportiveness-impact
+        [ set color green
+          set persuasiveness random 100
+          set supportiveness random 100 ]]
+  ]
+end
+
+
+to simple
+    ask cells
+    [ifelse radius-2?
+      [set all-neighbors two-neighbors]
+      [set all-neighbors one-neighbors]
+    set n count all-neighbors with [color = red] ]
+    ask cells
+      [ if n > Number-sources
+        [ set color red ] ]
+
+    ask cells
+      [ set m count all-neighbors with [color = green] ]
+    ask cells
+      [ if m > Number-sources
+        [ set color green ] ]
+end
+
 to compute-for-agents
-  ask cell 1
+  ask cells
     [ let others cells with [ color != [ color ] of myself ]
       let own cells with [color = [color] of myself]
 
@@ -98,19 +142,20 @@ to compute-for-agents
       let mainy ycor
 
       ask others
-        [set pers [persuasiveness] of myself / distancexy mainx mainy]
+        [set pers [persuasiveness] of myself / (( distancexy mainx mainy ) * (distancexy mainx mainy))]
       ifelse count(others) > 0
          [set persuasiveness-impact sqrt(count others ) * sum([pers] of others) / count(others)
-            print persuasiveness-impact]
-         [stop]
+            ]
+         [set persuasiveness-impact 0]
 
 
       ask own
-        [iset sup [supportiveness] of myself / distancexy mainx mainy]
+        [if distancexy mainx mainy > 0
+          [set sup [supportiveness] of myself / (( distancexy mainx mainy ) * (distancexy mainx mainy))]]
       ifelse count(own) > 0
         [set supportiveness-impact sqrt(count own ) * sum([sup] of own) / count(own)
-           print supportiveness-impact]
-        [stop]
+           ]
+        [set supportiveness-impact 0]
   ]
 end
 
@@ -125,26 +170,26 @@ to update-globals
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-505
+489
 10
-942
-448
+950
+472
 -1
 -1
-13.0
+11.05
 1
 10
 1
 1
 1
 0
+0
+0
 1
-1
-1
--16
-16
--16
-16
+-20
+20
+-20
+20
 1
 1
 1
@@ -152,10 +197,10 @@ ticks
 30.0
 
 BUTTON
-31
-90
-97
-123
+5
+48
+73
+81
 setup
 setup
 NIL
@@ -169,10 +214,10 @@ NIL
 1
 
 BUTTON
-31
-53
-206
-86
+6
+10
+181
+43
 Blank grid
 setup-grid
 NIL
@@ -186,10 +231,10 @@ NIL
 1
 
 BUTTON
-142
-91
-205
-124
+118
+47
+181
+80
 NIL
 go
 T
@@ -203,22 +248,22 @@ NIL
 1
 
 SLIDER
-29
-169
-207
-202
+7
+210
+182
+243
 percentage-red
 percentage-red
 1
 100
-36.0
+28.0
 1
 1
 NIL
 HORIZONTAL
 
 PLOT
-28
+8
 251
 485
 442
@@ -236,10 +281,10 @@ PENS
 "default" 1.0 0 -2674135 true "" "plot perc-red"
 
 SLIDER
-29
-133
-207
-166
+6
+152
+182
+185
 density
 density
 0
@@ -251,10 +296,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-29
-206
-207
-239
+316
+210
+484
+243
 number-sources
 number-sources
 0
@@ -266,35 +311,110 @@ NIL
 HORIZONTAL
 
 SWITCH
-213
-133
-356
-166
+206
+210
+307
+243
 radius-2?
 radius-2?
+1
+1
+-1000
+
+SWITCH
+263
+76
+366
+109
+simple?
+simple?
 0
 1
 -1000
 
 SWITCH
-213
-169
-356
-202
-mobility
-mobility
-1
+6
+114
+182
+147
+hexagonal?
+hexagonal?
+0
 1
 -1000
+
+TEXTBOX
+6
+84
+175
+112
+Do you want hexagons or squares?
+11
+0.0
+1
+
+TEXTBOX
+224
+10
+469
+70
+The default model is based on Nowak, Szamrej & Latané (1990). If you want to use only the influence of immediate and second order neighbors, select \"On\"
+12
+0.0
+1
+
+TEXTBOX
+206
+162
+316
+205
+Do second-order neighbors have an influence?
+11
+0.0
+1
+
+TEXTBOX
+8
+192
+176
+220
+Starting % of red agents
+11
+0.0
+1
+
+TEXTBOX
+320
+161
+470
+203
+How many neighbors of a different view will make an agent change opinion?
+11
+0.0
+1
+
+TEXTBOX
+224
+132
+407
+152
+Only for the \"simple\" model:
+13
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
 
-This is a simulation of a Nowak-Latane model.
+This is a simulation of a Nowak-Latané (Nowak, Szamrej&Latané, 1990)  model of opinion dynamics. In addition to the original model, it offers the possibility of manipulating density and arrangement of agents (grid of square or of hexagons). The user has also the option of using a simple model, that only takes into account neighbors, with all neighbors having the same persuasiveness and supportiveness.
 
 ## HOW IT WORKS
 
-Agents can have one of 2 opinions (red or green). They may change their opinion based on the opinion of neighboring agents. 
+Agents can have one of 2 opinions (red or green). 
+
+EXPLAIN NOWAK_LATANE HERE!
+
+In the "simple" model, they change their opinion based on the opinion of neighboring agents. The user can select who are the neighbors (only immediate, or also the second "circle"), and how many agents of a divergent opinion an agent needs to have in their neighborhood in order to change their opinion.
 
 ## HOW TO USE IT
 
