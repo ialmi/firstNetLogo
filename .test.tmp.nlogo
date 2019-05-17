@@ -10,7 +10,7 @@ cells-own [
   two-neighbors  ;; agentset of neighbors with radius 2
   all-neighbors  ;; agentset of neighbors
   n              ;; used to store a count of red neighbors
-  m              ;; used to store a count of green neighbors
+  m              ;; used to store a count of white neighbors
   ;comfortable    ;;
   persuasiveness ;; used to store the persuasiveness of the agent (ability to change others' opinion)
   supportiveness  ;; used to store the suportiveness of the agent (ability to help others maintain their opinion)
@@ -18,19 +18,24 @@ cells-own [
   supportiveness-impact
   pers
   sup
+  taken?
 ]
 
 to setup
   clear-all
   setup-grid
+  set perc-red percentage-red
 
   ask patches
     [ ask cells-here
-
-      [ifelse random (100 / percentage-red) = 0
+      [ifelse random 100 < percentage-red
         [set color red ]
-        [set color green] ]]
-  reset-ticks
+        [set color white] ]]
+  let cnt-red count cells with [color = red]
+  let cnt-tot count cells
+  set perc-red cnt-red / cnt-tot * 100
+  output-print perc-red
+    reset-ticks
 
 end
 
@@ -87,12 +92,83 @@ to setup-square
 
 end
 
+to setup-ajax
+  clear-all
+  set hexagonal? false
+  setup-grid
+  set perc-red percentage-red
+
+  set-default-shape cells "square"
+  ask patches
+      [ sprout-cells 1
+        [ set persuasiveness random 100
+          set supportiveness random 100
+          set taken? false ] ]
+  ;; now set up the 1-neighbors agentsets
+  ask cells
+        [ set one-neighbors cells-on patches at-points [[0 1] [1 1] [1 0] [1 -1] [0 -1] [-1 -1] [-1 0] [-1 1]]
+          set two-neighbors cells-on patches at-points [[0 1] [1 1] [1 0] [1 -1] [0 -1] [-1 -1] [-1 0] [-1 1]
+            [0 2] [1 2] [2 2][2 1] [2 0] [2 -1] [2 -2] [1 -2] [0 -2] [-1 -2] [-2 -2] [-2 -1] [-2 0] [-2 1] [-2 2] [-1 2]]
+          ]
+  let cells-ajax-random cells with [xcor < 3 or xcor > 36 or ycor < 13 or ycor > 27]
+  let cells-ajax-white cells with [ (xcor = 4 and (ycor > 16 and ycor < 26)) or
+                                    (xcor = 5 and (ycor > 16 and ycor < 27)) or
+                                    (xcor = 6 and (ycor = 20 or ycor = 24 or ycor = 25 or ycor = 26)) or
+                                    (xcor = 7 and (ycor = 20 or ycor = 24 or ycor = 25 or ycor = 26)) or
+                                    (xcor = 8 and (ycor > 16 and ycor < 27)) or
+                                    (xcor = 9 and (ycor > 16 and ycor < 26)) or
+                                    (xcor = 11 and (ycor = 15 or ycor = 16)) or
+                                    (xcor = 12 and (ycor > 13 and ycor < 17)) or
+                                    (xcor = 13 and (ycor = 14 or ycor = 15)) or
+                                    (xcor = 14 and (ycor = 14 or ycor = 15)) or
+                                    (xcor = 15 and (ycor > 13 and ycor < 27)) or
+                                    (xcor = 16 and (ycor > 14 and ycor < 27)) or
+                                    (xcor = 19 and (ycor > 16 and ycor < 26)) or
+                                    (xcor = 20 and (ycor > 16 and ycor < 27)) or
+                                    (xcor = 21 and (ycor = 20 or ycor = 24 or ycor = 25 or ycor = 26)) or
+                                    (xcor = 22 and (ycor = 20 or ycor = 24 or ycor = 25 or ycor = 26)) or
+                                    (xcor = 23 and (ycor > 16 and ycor < 27)) or
+                                    (xcor = 24 and (ycor > 16 and ycor < 26)) or
+                                    (xcor = 27 and (ycor = 17 or ycor = 18 or ycor = 25 or ycor = 26)) or
+                                    (xcor = 28 and ((ycor > 16 and ycor < 21) or (ycor > 22 and ycor < 27))) or
+                                    (xcor = 29 and (ycor > 16 and ycor < 27)) or
+                                    (xcor = 30 and (ycor > 18 and ycor < 25)) or
+                                    (xcor = 31 and (ycor = 21 or ycor = 22)) or
+                                    (xcor = 32 and (ycor > 18 and ycor < 25)) or
+                                    (xcor = 33 and (ycor > 16 and ycor < 27)) or
+                                    (xcor = 34 and ((ycor > 16 and ycor < 21) or (ycor > 22 and ycor < 27))) or
+                                    (xcor = 35 and (ycor = 17 or ycor = 18 or ycor = 25 or ycor = 26))
+    ]
+
+
+ ask cells-ajax-white
+    [set color white
+     set taken? true]
+ ask cells-ajax-random
+    [set taken? true
+     ifelse random 100 < percentage-red
+        [set color red ]
+        [set color white] ]
+ let cells-ajax-red cells with [ taken? = false]
+ ask cells-ajax-red
+    [set color red
+     set taken? true]
+ let cnt-red count cells with [color = red]
+  print cnt-red
+ let cnt-tot count cells
+ set perc-red cnt-red / cnt-tot * 100
+ output-print perc-red
+ reset-ticks
+
+end
+
+
 
 to go
 
 ifelse simple?
-  [simple]
-  [nowak-latane]
+  [simple] ;; run the simple model
+  [nowak-latane] ;; run the Nowak-Latané model
 
   update-globals
 
@@ -103,13 +179,13 @@ end
 to nowak-latane
   compute-for-agents
   ask cells
-    [ifelse  color = green
+    [ifelse  color = white
       [if persuasiveness-impact > supportiveness-impact
         [ set color red
           set persuasiveness random 100
           set supportiveness random 100 ] ]
       [if persuasiveness-impact > supportiveness-impact
-        [ set color green
+        [ set color white
           set persuasiveness random 100
           set supportiveness random 100 ]]
   ]
@@ -127,33 +203,34 @@ to simple
         [ set color red ] ]
 
     ask cells
-      [ set m count all-neighbors with [color = green] ]
+      [ set m count all-neighbors with [color = white] ]
     ask cells
       [ if m > Number-sources
-        [ set color green ] ]
+        [ set color white ] ]
 end
 
 to compute-for-agents
   ask cells
-    [ let others cells with [ color != [ color ] of myself ]
-      let own cells with [color = [color] of myself]
+    [ let different cells with [ color != [ color ] of myself ]
+      let same cells with [color = [color] of myself]
 
       let mainx xcor
       let mainy ycor
 
-      ask others
-        [set pers [persuasiveness] of myself / (( distancexy mainx mainy ) * (distancexy mainx mainy))]
-      ifelse count(others) > 0
-         [set persuasiveness-impact sqrt(count others ) * sum([pers] of others) / count(others)
+      ask different
+        [
+set pers [persuasiveness] of myself / (( distancexy mainx mainy ) * (distancexy mainx mainy))]
+      ifelse count(different) > 0
+         [set persuasiveness-impact sqrt(count different ) * sum([pers] of different) / count(different)
             ]
          [set persuasiveness-impact 0]
 
 
-      ask own
+      ask same
         [if distancexy mainx mainy > 0
           [set sup [supportiveness] of myself / (( distancexy mainx mainy ) * (distancexy mainx mainy))]]
-      ifelse count(own) > 0
-        [set supportiveness-impact sqrt(count own ) * sum([sup] of own) / count(own)
+      ifelse count(same) > 0
+        [set supportiveness-impact sqrt(count same ) * sum([sup] of same) / count(same)
            ]
         [set supportiveness-impact 0]
   ]
@@ -164,16 +241,15 @@ end
 to update-globals
   let cnt-red count cells with [color = red]
   let cnt-tot count cells
-  set perc-red percentage-red
   set perc-red cnt-red / cnt-tot * 100
-  print perc-red
+  output-print perc-red
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
 489
 10
-950
-472
+939
+461
 -1
 -1
 11.05
@@ -186,10 +262,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--20
-20
--20
-20
+0
+39
+0
+39
 1
 1
 1
@@ -198,9 +274,9 @@ ticks
 
 BUTTON
 5
-48
-73
-81
+47
+60
+80
 setup
 setup
 NIL
@@ -231,7 +307,7 @@ NIL
 1
 
 BUTTON
-118
+123
 47
 181
 80
@@ -256,17 +332,17 @@ percentage-red
 percentage-red
 1
 100
-28.0
+36.0
 1
 1
 NIL
 HORIZONTAL
 
 PLOT
-8
-251
+6
+286
 485
-442
+461
 Opinion: red
 NIL
 NIL
@@ -304,7 +380,7 @@ number-sources
 number-sources
 0
 15
-3.0
+4.0
 1
 1
 NIL
@@ -317,7 +393,7 @@ SWITCH
 243
 radius-2?
 radius-2?
-1
+0
 1
 -1000
 
@@ -339,7 +415,7 @@ SWITCH
 147
 hexagonal?
 hexagonal?
-0
+1
 1
 -1000
 
@@ -358,7 +434,7 @@ TEXTBOX
 10
 469
 70
-The default model is based on Nowak, Szamrej & Latané (1990). If you want to use only the influence of immediate and second order neighbors, select \"On\"
+The default model is based on Nowak, Szamrej & Latané (1990). Select if you want to use only the influence of immediate and second order neighbors
 12
 0.0
 1
@@ -400,6 +476,40 @@ TEXTBOX
 152
 Only for the \"simple\" model:
 13
+0.0
+1
+
+BUTTON
+63
+47
+118
+80
+AJAX
+setup-ajax
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+OUTPUT
+207
+257
+352
+284
+11
+
+TEXTBOX
+7
+263
+239
+291
+Current percentage of red agents:
+12
 0.0
 1
 
