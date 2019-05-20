@@ -219,7 +219,6 @@ to nowak-latane
   ]
 end
 
-
 to simple
     ask cells
     [ifelse radius-2?
@@ -236,7 +235,7 @@ to simple
         [ set color red ] ]
 
   ask reds
-  [ if m > Number-sources
+  [ if m >= Number-sources
         [ set color white ] ]
 end
 

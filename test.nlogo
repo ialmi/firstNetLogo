@@ -220,6 +220,7 @@ to nowak-latane
 end
 
 
+
 to simple
     ask cells
     [ifelse radius-2?
