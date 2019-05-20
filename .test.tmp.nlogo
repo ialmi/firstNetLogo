@@ -1,5 +1,8 @@
 globals [
   perc-red ;; used to store the percentage of red agents
+  min-neigh
+  max-neigh
+  number-sources
 
 ]
 
@@ -23,7 +26,9 @@ cells-own [
 
 to setup
   clear-all
-  setup-grid
+  ifelse hexagonal?
+    [setup-hex]
+    [setup-square]
   set perc-red percentage-red
 
   ask patches
@@ -34,24 +39,35 @@ to setup
   let cnt-red count cells with [color = red]
   let cnt-tot count cells
   set perc-red cnt-red / cnt-tot * 100
-  output-print perc-red
-    reset-ticks
+
+  if simple? [get-number-sources]
+
+  reset-ticks
 
 end
 
 
+to get-number-sources
+let nrsources user-input "How many neighbors of a different view will make an agent change opinion?"
+
+  carefully
+    [let nr-sources read-from-string nrsources
+     ifelse nr-sources >= min-neigh and nr-sources <= max-neigh
+       [set number-sources nr-sources]
+       [user-message (word "Please type in an integer between " min-neigh " and "  max-neigh)]]
+
+    [user-message (word "Please type in an integer between " min-neigh " and "  max-neigh)]
 
 
-to setup-grid
-  clear-all
-  ifelse hexagonal?
-    [setup-hex]
-    [setup-square]
-  reset-ticks
 end
 
 to setup-hex
   set-default-shape cells "box"
+  ifelse radius-2?
+      [set min-neigh  9
+      set max-neigh  18]
+      [set min-neigh  3
+      set max-neigh  6]
   ask patches
     [if random 100 < density
       [ sprout-cells 1
@@ -77,6 +93,11 @@ end
 
 to setup-square
   set-default-shape cells "square"
+  ifelse radius-2?
+      [set min-neigh  12
+       set max-neigh  24]
+      [set min-neigh  4
+       set max-neigh  8]
   ask patches
     [if random 100 < density
       [ sprout-cells 1
@@ -95,7 +116,7 @@ end
 to setup-ajax
   clear-all
   set hexagonal? false
-  setup-grid
+  ;setup-grid
   set perc-red percentage-red
 
   set-default-shape cells "square"
@@ -157,7 +178,14 @@ to setup-ajax
   print cnt-red
  let cnt-tot count cells
  set perc-red cnt-red / cnt-tot * 100
- output-print perc-red
+   ifelse radius-2?
+      [set min-neigh  12
+       set max-neigh  24]
+      [set min-neigh  4
+       set max-neigh  8]
+
+  if simple? [get-number-sources]
+
  reset-ticks
 
 end
@@ -197,15 +225,18 @@ to simple
     [ifelse radius-2?
       [set all-neighbors two-neighbors]
       [set all-neighbors one-neighbors]
-    set n count all-neighbors with [color = red] ]
-    ask cells
-      [ if n > Number-sources
+    set n count all-neighbors with [color = red]
+    set m count all-neighbors with [color = white] ]
+
+  let whites cells with [color = white]
+  let reds cells with [color = red]
+
+  ask whites
+  [ if n >= Number-sources
         [ set color red ] ]
 
-    ask cells
-      [ set m count all-neighbors with [color = white] ]
-    ask cells
-      [ if m > Number-sources
+  ask reds
+  [ if m > Number-sources
         [ set color white ] ]
 end
 
@@ -218,8 +249,8 @@ to compute-for-agents
       let mainy ycor
 
       ask different
-        [
-set pers [persuasiveness] of myself / (( distancexy mainx mainy ) * (distancexy mainx mainy))]
+        [if distancexy mainx mainy > 0
+          [ set pers [persuasiveness] of myself / (( distancexy mainx mainy ) * (distancexy mainx mainy))]]
       ifelse count(different) > 0
          [set persuasiveness-impact sqrt(count different ) * sum([pers] of different) / count(different)
             ]
@@ -242,7 +273,7 @@ to update-globals
   let cnt-red count cells with [color = red]
   let cnt-tot count cells
   set perc-red cnt-red / cnt-tot * 100
-  output-print perc-red
+
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -269,33 +300,16 @@ GRAPHICS-WINDOW
 1
 1
 1
-ticks
+iterations
 30.0
 
 BUTTON
-5
-47
-60
-80
-setup
-setup
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
 6
-10
-181
-43
-Blank grid
-setup-grid
+11
+61
+44
+setup
+setup
 NIL
 1
 T
@@ -307,10 +321,10 @@ NIL
 1
 
 BUTTON
-123
-47
-181
-80
+124
+11
+182
+44
 NIL
 go
 T
@@ -324,15 +338,15 @@ NIL
 1
 
 SLIDER
-7
-210
-182
-243
+6
+193
+181
+226
 percentage-red
 percentage-red
 1
 100
-36.0
+70.0
 1
 1
 NIL
@@ -357,51 +371,36 @@ PENS
 "default" 1.0 0 -2674135 true "" "plot perc-red"
 
 SLIDER
-6
-152
-182
-185
+5
+132
+181
+165
 density
 density
 0
 100
-100.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-316
-210
-484
-243
-number-sources
-number-sources
-0
-15
-4.0
+48.0
 1
 1
 NIL
 HORIZONTAL
 
 SWITCH
-206
-210
-307
-243
+381
+194
+485
+227
 radius-2?
 radius-2?
-0
+1
 1
 -1000
 
 SWITCH
-263
-76
-366
-109
+272
+80
+375
+113
 simple?
 simple?
 0
@@ -410,9 +409,9 @@ simple?
 
 SWITCH
 6
-114
+87
 182
-147
+120
 hexagonal?
 hexagonal?
 1
@@ -421,10 +420,10 @@ hexagonal?
 
 TEXTBOX
 6
-84
+56
 175
-112
-Do you want hexagons or squares?
+84
+Do you want hexagonal or square agents?
 11
 0.0
 1
@@ -440,50 +439,50 @@ The default model is based on Nowak, Szamrej & Latané (1990). Select if you wan
 1
 
 TEXTBOX
-206
-162
-316
-205
+208
+192
+373
+235
 Do second-order neighbors have an influence?
 11
 0.0
 1
 
 TEXTBOX
-8
-192
-176
-220
+7
+178
+175
+206
 Starting % of red agents
 11
 0.0
 1
 
 TEXTBOX
-320
-161
-470
-203
-How many neighbors of a different view will make an agent change opinion?
+206
+231
+384
+272
+Minimum number of neighbors with a different view who will make an agent change opinion:
 11
 0.0
 1
 
 TEXTBOX
-224
-132
-407
-152
+253
+157
+436
+177
 Only for the \"simple\" model:
 13
 0.0
 1
 
 BUTTON
-63
-47
-118
-80
+64
+11
+119
+44
 AJAX
 setup-ajax
 NIL
@@ -496,22 +495,27 @@ NIL
 NIL
 1
 
-OUTPUT
-207
-257
-352
-284
+MONITOR
+6
+232
+182
+277
+Current % of red agents
+perc-red
+2
+1
 11
 
-TEXTBOX
-7
-263
-239
-291
-Current percentage of red agents:
-12
-0.0
+MONITOR
+380
+231
+485
+276
+NIL
+number-sources
+0
 1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -520,7 +524,7 @@ This is a simulation of a Nowak-Latané (Nowak, Szamrej&Latané, 1990)  model of
 
 ## HOW IT WORKS
 
-Agents can have one of 2 opinions (red or green). 
+Agents can have one of 2 opinions (red or white). 
 
 EXPLAIN NOWAK_LATANE HERE!
 
