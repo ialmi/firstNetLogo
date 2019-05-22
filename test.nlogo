@@ -1,9 +1,13 @@
 globals [
   perc-red ;; used to store the percentage of red agents
-  min-neigh
-  max-neigh
-  number-sources
-
+  min-neigh ;; minimum number of neighbors who could change an opinion (half of possible number of neighbors)
+  max-neigh ;; maximum number of neighbors who could change an opinion (maximum possible number of neighbors)
+  number-sources ;; minimum number of sources with a different opinion required in order for an agent to change of opinion
+  check-hex?
+  check-radius?
+  check-simple?
+  check-ok?
+  need-to-restart?
 ]
 
 breed [ cells cell ]
@@ -14,33 +18,38 @@ cells-own [
   all-neighbors  ;; agentset of neighbors
   n              ;; used to store a count of red neighbors
   m              ;; used to store a count of white neighbors
-  ;comfortable    ;;
+  ;comfort       ;; not implemented yet
   persuasiveness ;; used to store the persuasiveness of the agent (ability to change others' opinion)
   supportiveness  ;; used to store the suportiveness of the agent (ability to help others maintain their opinion)
-  persuasiveness-impact
-  supportiveness-impact
-  pers
-  sup
-  taken?
+  persuasiveness-impact ;; computed based on the persuasiveness and distance of all other agents
+  supportiveness-impact ;; computed based on the supportiveness and distance of all other agents
+  pers ;; temporary value used for computing persuasiveness-impact
+  sup  ;; temporary value used for computing supportiveness-impact
+  taken?  ;; temporary value used for making the AJAX-pattern
 ]
 
 to setup
   clear-all
+  set-min-max-neighbors
   ifelse hexagonal?
     [setup-hex]
     [setup-square]
   set perc-red percentage-red
+
+  set check-hex? hexagonal?
+  ;set check-radius? radius-2?
+  ;set check-simple? simple?
 
   ask patches
     [ ask cells-here
       [ifelse random 100 < percentage-red
         [set color red ]
         [set color white] ]]
-  let cnt-red count cells with [color = red]
-  let cnt-tot count cells
-  set perc-red cnt-red / cnt-tot * 100
 
-  if simple? [get-number-sources]
+  set perc-red (count cells with [color = red]) / (count cells) * 100
+
+  if simple?
+    [get-number-sources]
 
   reset-ticks
 
@@ -48,26 +57,26 @@ end
 
 
 to get-number-sources
-let nrsources user-input "How many neighbors of a different view will make an agent change opinion?"
+let nrsources user-input (word "How many neighbors of a different view will make an agent change opinion? Please type in an integer between " min-neigh " and "  max-neigh)
 
   carefully
     [let nr-sources read-from-string nrsources
      ifelse nr-sources >= min-neigh and nr-sources <= max-neigh
        [set number-sources nr-sources]
-       [user-message (word "Please type in an integer between " min-neigh " and "  max-neigh)]]
+       [run-redo]]
+    [run-redo]
+end
 
-    [user-message (word "Please type in an integer between " min-neigh " and "  max-neigh)]
-
-
+to run-redo
+  user-message (word "Oups, that cannot be right! Please try again and  type in an integer between " min-neigh " and "  max-neigh)
+  get-number-sources
+  ;clear-all
 end
 
 to setup-hex
   set-default-shape cells "box"
-  ifelse radius-2?
-      [set min-neigh  9
-      set max-neigh  18]
-      [set min-neigh  3
-      set max-neigh  6]
+  set-min-max-neighbors
+
   ask patches
     [if random 100 < density
       [ sprout-cells 1
@@ -93,11 +102,6 @@ end
 
 to setup-square
   set-default-shape cells "square"
-  ifelse radius-2?
-      [set min-neigh  12
-       set max-neigh  24]
-      [set min-neigh  4
-       set max-neigh  8]
   ask patches
     [if random 100 < density
       [ sprout-cells 1
@@ -118,6 +122,10 @@ to setup-ajax
   set hexagonal? false
   ;setup-grid
   set perc-red percentage-red
+
+  set check-hex? hexagonal?
+  set check-radius? radius-2?
+  set check-simple? simple?
 
   set-default-shape cells "square"
   ask patches
@@ -178,11 +186,8 @@ to setup-ajax
   print cnt-red
  let cnt-tot count cells
  set perc-red cnt-red / cnt-tot * 100
-   ifelse radius-2?
-      [set min-neigh  12
-       set max-neigh  24]
-      [set min-neigh  4
-       set max-neigh  8]
+ set-min-max-neighbors
+
 
   if simple? [get-number-sources]
 
@@ -193,14 +198,59 @@ end
 
 
 to go
+  set-min-max-neighbors
+  set check-ok? true
+  set need-to-restart? false
+  if simple?
+    [run-check]
+  if need-to-restart? = true
+    [stop]
+  ifelse check-ok? = false
+   [;ifelse number-sources = 0
+      ;[stop]
+      user-message ("You changed the settings for the simple model and/or the number of sources id not valid (anymore), please set the number of sources again!")
+      get-number-sources
+      ;clear-all
+      stop]
+    [run-model]
 
-ifelse simple?
+end
+
+to run-check
+  if number-sources < min-neigh or number-sources > max-neigh
+      [set check-ok? false]
+  if check-hex? != hexagonal?
+      [set check-ok? false
+       user-message ("You changed the shape settings for the simple model. You'll need to start from the beginning. If you want to keep the present shape, click HALT and change the shape setting back")
+       clear-all
+       set need-to-restart? true]
+end
+
+to set-min-max-neighbors
+  ifelse hexagonal?
+  [ifelse radius-2?
+      [set min-neigh  9
+      set max-neigh  18]
+      [set min-neigh  3
+      set max-neigh  6]]
+  [ifelse radius-2?
+      [set min-neigh  12
+       set max-neigh  24]
+      [set min-neigh  4
+       set max-neigh  8]]
+end
+
+to run-model
+
+ ifelse simple?
   [simple] ;; run the simple model
   [nowak-latane] ;; run the Nowak-Latané model
 
   update-globals
-
-  tick
+  carefully
+    [tick]
+    [reset-ticks
+     tick]
 end
 
 
@@ -224,8 +274,8 @@ end
 to simple
     ask cells
     [ifelse radius-2?
-      [set all-neighbors two-neighbors]
-      [set all-neighbors one-neighbors]
+       [set all-neighbors two-neighbors]
+       [set all-neighbors one-neighbors]
     set n count all-neighbors with [color = red]
     set m count all-neighbors with [color = white] ]
 
@@ -271,9 +321,8 @@ end
 
 
 to update-globals
-  let cnt-red count cells with [color = red]
-  let cnt-tot count cells
-  set perc-red cnt-red / cnt-tot * 100
+  if (count cells) > 0 ;prevents errors
+    [set perc-red (count cells with [color = red]) / (count cells) * 100] ;update % of red cells
 
 end
 @#$#@#$#@
@@ -347,7 +396,7 @@ percentage-red
 percentage-red
 1
 100
-70.0
+73.0
 1
 1
 NIL
@@ -380,7 +429,7 @@ density
 density
 0
 100
-48.0
+100.0
 1
 1
 NIL
@@ -393,7 +442,7 @@ SWITCH
 227
 radius-2?
 radius-2?
-1
+0
 1
 -1000
 
@@ -470,11 +519,11 @@ Minimum number of neighbors with a different view who will make an agent change 
 1
 
 TEXTBOX
-253
+220
 157
-436
-177
-Only for the \"simple\" model:
+471
+189
+Only relevant for the \"simple\" model:
 13
 0.0
 1
@@ -509,11 +558,11 @@ perc-red
 
 MONITOR
 380
-231
+234
 485
-276
+279
 NIL
-number-sources
+int(number-sources)
 0
 1
 11

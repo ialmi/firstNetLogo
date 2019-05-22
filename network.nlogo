@@ -3,14 +3,29 @@ extensions [ nw ]
 to go
 
   clear-all
-
-  nw:generate-watts-strogatz turtles links population-size 0.001 0.2
+  create-turtles population-size
+  let num-links (average-degree * population-size) / 2
+  while [count links < num-links ]
+  [
+    ask one-of turtles
+    [
+      let choice (min-one-of (other turtles with [not link-neighbor? myself])
+                   [distance myself])
+      if choice != nobody [ create-link-with choice ]
+    ]
+  ]
+  ; make the network look a little prettier
+  repeat 30
+  [
+    layout-spring turtles links 0.3 (world-width / (sqrt number-of-nodes)) 1
+  ]
+end
 
   ask turtles
   ;  [create-links-with other turtles
     [set xcor random 32
      set ycor random 32]
-
+  repeat 30 [ layout-spring turtles links 0.2 5 1 ]
 
   ;nw:set-context turtles links
   ;show map sort nw:get-context
@@ -80,12 +95,12 @@ HORIZONTAL
 SLIDER
 25
 149
-197
+222
 182
-density
-density
-0
-100
+average-degree
+average-degree
+1
+50
 50.0
 1
 1
