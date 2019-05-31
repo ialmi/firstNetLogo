@@ -22,7 +22,6 @@ cells-own [
   all-neighbors  ;; agentset of neighbors
   n              ;; used to store a count of red neighbors
   m              ;; used to store a count of white neighbors
-  ;comfort       ;; not implemented yet
   persuasiveness ;; used to store the persuasiveness of the agent (ability to change others' opinion)
   supportiveness  ;; used to store the suportiveness of the agent (ability to help others maintain their opinion)
   persuasiveness-impact ;; computed based on the persuasiveness and distance of all different agents
@@ -430,7 +429,7 @@ end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; computes persuasiveness- and supportiveness-impact for each agent ;;;;
-;;;;;;;;;;;;;; for the
+;;;;;;;;;;;;;;;;;;;; for the Nowak-Latané model ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to compute-for-agents
@@ -586,7 +585,7 @@ density
 density
 0
 100
-55.0
+100.0
 1
 1
 NIL
@@ -621,7 +620,7 @@ SWITCH
 120
 hexagonal?
 hexagonal?
-1
+0
 1
 -1000
 
@@ -716,9 +715,9 @@ perc-red
 MONITOR
 380
 234
-485
+552
 279
-NIL
+                                             .
 int(number-sources)
 0
 1
@@ -727,7 +726,7 @@ int(number-sources)
 @#$#@#$#@
 ## WHAT IS IT?
 
-This is a simulation of a Nowak-Latané (Nowak, Szamrej&Latané, 1990)  model of opinion dynamics. In addition to the original model, it offers the possibility of manipulating density and arrangement of agents (grid of square or of hexagons). The user has also the option of using a simple model, that only takes into account neighbors, with all neighbors having the same persuasiveness and supportiveness.
+This is a simulation of a Nowak-Latané (Nowak, Szamrej&Latané, 1990)  model of opinion dynamics. In addition to the original model, it offers the possibility of manipulating density and arrangement of agents (grid of square or of hexagons). The user has also the option of using a simple model, which only takes into account neighbors, and ignores  persuasiveness and supportiveness.
 
 ## HOW IT WORKS
 
@@ -760,7 +759,7 @@ Notice how in the simple model, minorities may keep their position unchanged if 
 Try different starting proportions, try the different types of model, see what happens when density is not 100%.
 
 ## EXTENDING THE MODEL
-It would be nice to extend the model with mobility (agents would be able to move when they feel uncomfortable - so a new turtle variable would be needed: "comfort"), and/or with the possibility for agents to hide their true opinion when they are surrounded by oponents.
+It would be nice to extend the model with mobility (agents would be able to move when they feel uncomfortable - so a new turtle variable would be needed: "comfort"), and/or with the possibility for agents to hide their true opinion when they are surrounded by "opponents".
 Another nice extension would be to allow the user to select which agents to be of which opinion: change the colour of the agent by clicking on it.
 
 ## NETLOGO FEATURES
